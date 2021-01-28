@@ -16,7 +16,7 @@ void bitonic_sort(int *Ar,int n,int p, int rank,MPI_Comm comm);
 
 int main (int argc, char *argv[])
 {
-    int n,p,rank,i,j,l,t,x,offset;
+    int n,p,rank,i,j,l,t,x;
     int tag1,tag2,tag3;
     int N=SIZE;
     int A[SIZE];
@@ -26,8 +26,9 @@ int main (int argc, char *argv[])
     int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
     int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
 
-
     int k=4;
+    int *Spl=(int *)malloc(sizeof(int)*(k-1)); //Global histogram of sorted splitters
+    int cnt=0;
 
     MPI_Comm comm;
     MPI_Status status;
@@ -86,6 +87,7 @@ int main (int argc, char *argv[])
     //print_array_in_process(r, n, p, rank, "Sorted splitters");
     MPI_Barrier(comm);
 
+    //Βημα 2. Rank
     //Καθε διεργασια θα μετρησει ποσοι αριθμοι ειναι μικροτεροι του πρωτου Splitter (δηλ του index0)
     //και θα το σωσει στο δικο της index
     for (l=0;l<n;l++)
@@ -113,6 +115,29 @@ int main (int argc, char *argv[])
     if (rank==0){
         print_array_in_process(GlrAr,n,p,rank,"Global Histogram of sorted splitters");
     }
+
+    MPI_Barrier(comm);
+    //Find k-1 splitters from global histogram
+
+    int jump=0;
+    for (j = 0; j < k - 1; j++) {
+        for (x = jump; x < n; x++) {
+            if ((cnt + GlrAr[x]) <= n) {
+                cnt = cnt + GlrAr[x];
+            } else {
+                cnt = 0;
+                Spl[j] = r[x];
+                jump=x;
+                break;
+            }
+        }
+    }
+    print_array_in_process(Spl, k - 1, p, rank, "Global Splitters");
+
+
+    //Πρεπει να φτιαξω buckets μοιραζοντας τα στοιχεια με βαση τους διαχωριστες
+    //Βημα 4.
+
 
     // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
     //Για αρχη Alltoallv στην συνεχεια να την αλλαξω με AlltoAllkway
