@@ -2,25 +2,29 @@
 #include <stdlib.h>
 #include <time.h>
 #include <mpi/mpi.h>
-#include <math.h>
 #include <omp.h>
+#include <math.h>
+#include <string.h>
 #include "functions.h"
 
 #define SIZE 64
 
 
-int ParallelSelect(int *Ar,int n, int p, int rank) ;
+int * ParallelSelect(int *Ar,int n, int p, int rank) ;
 int HykSort(int *Ar, int kway,int rank, MPI_Comm comm);
 void bitonic_sort(int *Ar,int n,int p, int rank,MPI_Comm comm);
 
 int main (int argc, char *argv[])
 {
-    int n,p,rank,i,j,l,offset;
-    int tag1,tag2;
+    int n,p,rank,i,j,l,t,x,offset;
+    int tag1,tag2,tag3;
     int N=SIZE;
     int A[SIZE];
-    int *Ar=(int *)malloc(sizeof(int)*10);
-    int *B=(int *)malloc(sizeof(int)*10);
+    int *Ar=(int *)malloc(sizeof(int)*N); 
+    int *B=(int *)malloc(sizeof(int)*N);
+    int *r=(int *)malloc(sizeof(int)*N); 
+    int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
+    int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
 
 
     int k=4;
@@ -78,8 +82,37 @@ int main (int argc, char *argv[])
     MPI_Barrier(comm);
     print_array_in_process(Ar,n,p,rank,"Sort local Ar");
     MPI_Barrier(comm);
-    ParallelSelect(Ar,n,p,rank);
+    r=ParallelSelect(Ar,n,p,rank);
+    //print_array_in_process(r, n, p, rank, "Sorted splitters");
     MPI_Barrier(comm);
+
+    //Καθε διεργασια θα μετρησει ποσοι αριθμοι ειναι μικροτεροι του πρωτου Splitter (δηλ του index0)
+    //και θα το σωσει στο δικο της index
+    for (l=0;l<n;l++)
+    {   rAr[l]=0;
+        for (t=0;t<n;t++){
+            if (l==0){
+                if (Ar[t]<=r[l]){rAr[l]++;}
+            }
+            else if (l>0 && l<n-1){
+                if (Ar[t]<=r[l] && Ar[t]>r[l-1] && r[l]>r[l-1]){ 
+                    rAr[l]++;
+                }
+            }
+            else if (l==n-1){
+                if (Ar[t]>r[l]){ 
+                    rAr[l]++;
+                }
+            }
+        }
+    }
+    MPI_Barrier(comm);
+    print_array_in_process(rAr, n, p, rank, "Local Histogram of sorted_splitters");
+
+    MPI_Allreduce( rAr, GlrAr, n, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
+    if (rank==0){
+        print_array_in_process(GlrAr,n,p,rank,"Global Histogram of sorted splitters");
+    }
 
     // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
     //Για αρχη Alltoallv στην συνεχεια να την αλλαξω με AlltoAllkway
@@ -92,14 +125,15 @@ int main (int argc, char *argv[])
     MPI_Finalize();
     return 0;
 }
-int ParallelSelect(int *Ar,int n, int p, int rank) {
+int * ParallelSelect(int *Ar,int n, int p, int rank) {
     int offset=n/p; //offset=4 ανα 4 στοιχεια παω να παρω splitter
-    int i,j,l,t;
+    int i,j;
     j=0;
 
     int *sample_splitters=(int *)malloc(sizeof(int)*(offset));
     int *sorted_splitters;
-    int *r=(int *)malloc(sizeof(int)*n);
+    // int r[nlocal];
+    // memset(r,0,nlocal*sizeof(int));
 
     srand(time(NULL) + rank);
 
@@ -117,20 +151,7 @@ int ParallelSelect(int *Ar,int n, int p, int rank) {
     if(rank==0) {
         print_array_in_process(sorted_splitters, n, p, rank, "Gathered sorted_splitters");
     }
-//    return sorted_splitters;
-    //Αυτα να τα παω στη main
-    //Καθε διεργασια θα μετρησει ποσοι αριθμοι ειναι μικροτεροι του πρωτου Splitter (δηλ του index0)
-    //και θα το σωσει στο δικο της index0
-    //TODO Create a local Histogram of sorted_splitters and Ar.
-    for (l=1;l=n;l++)
-    {
-        for (t=0;t<n;t++){
-            if (Ar[t]<sorted_splitters[l] && Ar[t]>sorted_splitters[l-1]) {
-                r[l]++;
-            }
-        }
-    }
-    print_array_in_process(r, n, p, rank, "Local Histogram of sorted_splitters");
+    return sorted_splitters;
 }
 
 int Hyksort(int *Ar, int k, MPI_Comm comm)
