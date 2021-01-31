@@ -5,6 +5,7 @@
 #include <omp.h>
 #include <math.h>
 #include <string.h>
+#include <unistd.h>
 #include "functions.h"
 
 #define SIZE 64
@@ -16,7 +17,7 @@ void bitonic_sort(int *Ar,int n,int p, int rank,MPI_Comm comm);
 
 int main (int argc, char *argv[])
 {
-    int n,p,rank,i,j,l,t,x;
+    int n,p,rank,i,j,l,t,x,v,w,y;
     int tag1,tag2,tag3;
     int N=SIZE;
     int A[SIZE];
@@ -25,6 +26,7 @@ int main (int argc, char *argv[])
     int *r=(int *)malloc(sizeof(int)*N); 
     int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
     int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
+    int *Buckets = (int *) malloc (sizeof (int) * (N + p));
 
     int k=4;
     int *Spl=(int *)malloc(sizeof(int)*(k-1)); //Global histogram of sorted splitters
@@ -132,11 +134,61 @@ int main (int argc, char *argv[])
             }
         }
     }
+    
     print_array_in_process(Spl, k - 1, p, rank, "Global Splitters");
 
-
+    MPI_Barrier(comm);
     //Πρεπει να φτιαξω buckets μοιραζοντας τα στοιχεια με βαση τους διαχωριστες
-    //Βημα 4.
+    //Βημα 4. M είναι το μήνυμα που πρέπει να στείλει η διεργασία με το rank pr σε κάθε άλλη διεργασία i
+    //Το message του bucket που πρέπει να φτιάξει
+    //Κάθε διεργασία πρέπει να χωρίσει τους αριθμούς που έχει (Ar) με βάση τους Splitters Spl
+    /**** Creating Buckets locally ****/
+    
+    
+    v = 0;
+    w = 1;
+
+    for (y=0; y<n; y++){
+      if(v < (p-1)){
+         if (Ar[y] < Spl[v]) 
+    			 Buckets[((n + 1) * v) + w++] = Ar[y]; 
+         else{
+    	       Buckets[(n + 1) * v] = w-1;
+    		    w=1;
+    			 v++;
+    		    y--;
+         }
+      }
+      else 
+         Buckets[((n + 1) * v) + w++] = Ar[y];
+    }
+    Buckets[(n + 1) * v] = w - 1;
+
+    if(rank==0){
+    MPI_Barrier(comm);
+    sleep(5);
+    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
+    }
+
+    if(rank==1){
+    MPI_Barrier(comm);
+    sleep(10);
+    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
+    }
+
+
+    if(rank==2){
+    MPI_Barrier(comm);
+    sleep(15);
+    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
+    }
+
+    
+    if(rank==3){
+    MPI_Barrier(comm);
+    sleep(20);
+    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
+    }
 
 
     // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
@@ -146,6 +198,8 @@ int main (int argc, char *argv[])
 //                      const int *sdispls, MPI_Datatype sendtype, void *recvbuf,
 //                      const int *recvcounts, const int *rdispls, MPI_Datatype recvtype, MPI_Comm comm)
 
+
+    free(Buckets);
 
     MPI_Finalize();
     return 0;
