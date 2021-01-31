@@ -17,7 +17,7 @@ void bitonic_sort(int *Ar,int n,int p, int rank,MPI_Comm comm);
 
 int main (int argc, char *argv[])
 {
-    int n,p,rank,i,j,l,t,x,v,w,y;
+    int n,m,p,pr,rank,i,j,l,t,x,v,w,y;
     int tag1,tag2,tag3;
     int N=SIZE;
     int A[SIZE];
@@ -164,6 +164,8 @@ int main (int argc, char *argv[])
     }
     Buckets[(n + 1) * v] = w - 1;
 
+    //TODO Remove The following statements
+
     if(rank==0){
     MPI_Barrier(comm);
     sleep(5);
@@ -193,17 +195,62 @@ int main (int argc, char *argv[])
 
     // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
     //Για αρχη Alltoallv στην συνεχεια να την αλλαξω με AlltoAllkway
+    /*
+    MPI_Request req;
+    m=p/k; //int m=k/p;
 
-//    int MPI_Alltoallv(const void *sendbuf, const int *sendcounts,
+  	if(p>1)
+  	{
+        int pr=rank/m;
+  		int color = k*pr/p;
+  		MPI_Request R[k];
+  		#pragma parallel for
+  		for (int i = 0; i < k; ++i)
+  		{
+  			//MPI_Request 
+  			int precv=m*((color-i)%k)+(pr%m);
+  			MPI_Irecv(Buckets, N, MPI_INT,precv, tag1, comm, &R[i])
+  		}
+
+  		for (int i = 0; i < k; ++i)
+  		{
+  			int precv=m*((color-i)%k)+(pr%m);
+  			int psend=m*((color+i)%k)+(pr%m);
+  			MPI_Isend(&B,N,MPI_INT,psend,tag1,comm,&R[i]);
+
+  			j=2;
+  			while(i>0 && i%j==0)
+  			{
+
+  				j=2*j;
+  			}
+            MPI_Wait(&R[i],&status);
+  			//MPI_WaitRecv();
+  		}
+  		MPI_WaitAll();
+
+  		MPI_Comm_split(comm,color,rank,comm);
+  		pr=MPI_Comm_rank(comm,rank);
+  	}
+    printf("My pr is %d",pr);
+    */
+    //    int MPI_Alltoallv(const void *sendbuf, const int *sendcounts,
 //                      const int *sdispls, MPI_Datatype sendtype, void *recvbuf,
 //                      const int *recvcounts, const int *rdispls, MPI_Datatype recvtype, MPI_Comm comm)
 
 
-    free(Buckets);
+    // free(Buckets);
+    // free(Spl);
+    // free(Ar);
+    // free(GlrAr);
+    // free(rAr);
+    // free(B);
 
     MPI_Finalize();
     return 0;
 }
+
+
 int * ParallelSelect(int *Ar,int n, int p, int rank) {
     int offset=n/p; //offset=4 ανα 4 στοιχεια παω να παρω splitter
     int i,j;
