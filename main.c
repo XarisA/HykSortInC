@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "functions.h"
 
-#define SIZE 64
+#define SIZE 128
 
 
 int * ParallelSelect(int *Ar,int n, int p, int rank) ;
@@ -22,8 +22,8 @@ int main (int argc, char *argv[])
     int N=SIZE;
     int A[SIZE];
     int *Ar=(int *)malloc(sizeof(int)*N); 
-    //int *B=(int *)malloc(sizeof(int)*N);
-    int *r=(int *)malloc(sizeof(int)*N);
+    int *B=(int *)malloc(sizeof(int)*N);
+    int *r=(int *)malloc(sizeof(int)*N); 
     int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
     int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
     int *Buckets = (int *) malloc (sizeof (int) * (N + p));
@@ -58,16 +58,19 @@ int main (int argc, char *argv[])
         print_array(A,N);
         Ar=A;
 
+        //TODO Change the following with Broadcast
+        //MPI_Bcast(&N,1,MPI_INT,0,comm);
         //Αποστολή του Ν σε όλες τις διεργασίες
         for (int target = 1; target < p; target++) {
             MPI_Send(&N, 1, MPI_INT, target, tag1, MPI_COMM_WORLD);
         }
         i= n;
         // Initial Element Distribution
+        //TODO Change the following with Scater
         //Αποστολή τον πινακα σε όλες τις διεργασίες(-επεξεργαστες) (της διεύθυνσής του για την ακρίβεια).
         //Ο καθε ενας παιρνει τον ιδιο αριθμο στοιχειων
         for (int target = 1; target < p; target++) {
-            MPI_Send(&A[i], n, MPI_INT, target, tag2, MPI_COMM_WORLD);
+            MPI_Send(&A[i], n, MPI_INT, target, tag2, MPI_COMM_WORLD); 
             i += n;
         }
     }else {
@@ -168,8 +171,26 @@ int main (int argc, char *argv[])
     Buckets[(n + 1) * v] = w - 1;
 
     //TODO Remove The following statements
+
     print_array_in_process(Buckets, N+p, p, rank, "Buckets");
 
+    //scaterv send parts of vectors to all other processes
+    //sendcounts Πόσα στοιχεία θα στείλω σε κάθε διεργασία (με την σειρά οι διεργασίες)
+    //sendcounts μία θέση για κάθε διεργασία
+    //displacements από ποα θέση θα ξεκινήσουμε να παίρνουμε τα στοιχεία
+    //MPI_Scatterv(A,sendcounts,displs,MPI_INT,local_A,sendcounts[rank],MPI_INT,0,comm)
+
+    //MPI_Gatherv(local_A,sendcounts,MPI_INT,A,recvcounts[rank],displs,MPI_INT,0,comm)
+
+    int * BucketBuffer = (int *) malloc (sizeof (int) * (N + p));
+
+    MPI_Alltoall (Buckets, n + 1, MPI_INT, BucketBuffer, 
+					 n + 1, MPI_INT, MPI_COMM_WORLD);
+    MPI_Barrier(comm);
+
+
+    print_array_in_process(BucketBuffer, N+p, p, rank, "BucketBuffer");
+    MPI_Barrier(comm);
 
 
     // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
@@ -218,12 +239,12 @@ int main (int argc, char *argv[])
 //                      const int *recvcounts, const int *rdispls, MPI_Datatype recvtype, MPI_Comm comm)
 
 
-//     free(Buckets);
-//     free(Spl);
-//     free(Ar);
-//     free(GlrAr);
-//     free(rAr);
-//     free(B);
+    // free(Buckets);
+    // free(Spl);
+    // free(Ar);
+    // free(GlrAr);
+    // free(rAr);
+    // free(B);
 
     MPI_Finalize();
     return 0;
