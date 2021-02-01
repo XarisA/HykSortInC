@@ -10,4 +10,4 @@ SET(CMAKE_C_COMPILER mpicc)
 SET(CMAKE_CXX_COMPILER mpicxx)
 
 
-add_executable(HykSortInC main.c functions.h DEL_ParallelSelect_ideas.c)
+add_executable(HykSortInC main.c functions.h)

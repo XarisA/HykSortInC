@@ -22,8 +22,8 @@ int main (int argc, char *argv[])
     int N=SIZE;
     int A[SIZE];
     int *Ar=(int *)malloc(sizeof(int)*N); 
-    int *B=(int *)malloc(sizeof(int)*N);
-    int *r=(int *)malloc(sizeof(int)*N); 
+    //int *B=(int *)malloc(sizeof(int)*N);
+    int *r=(int *)malloc(sizeof(int)*N);
     int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
     int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
     int *Buckets = (int *) malloc (sizeof (int) * (N + p));
@@ -31,6 +31,9 @@ int main (int argc, char *argv[])
     int k=4;
     int *Spl=(int *)malloc(sizeof(int)*(k-1)); //Global histogram of sorted splitters
     int cnt=0;
+    tag1=100;
+    tag2=200;
+    tag3=300;
 
     MPI_Comm comm;
     MPI_Status status;
@@ -165,32 +168,8 @@ int main (int argc, char *argv[])
     Buckets[(n + 1) * v] = w - 1;
 
     //TODO Remove The following statements
-
-    if(rank==0){
-    MPI_Barrier(comm);
-    sleep(5);
     print_array_in_process(Buckets, N+p, p, rank, "Buckets");
-    }
 
-    if(rank==1){
-    MPI_Barrier(comm);
-    sleep(10);
-    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
-    }
-
-
-    if(rank==2){
-    MPI_Barrier(comm);
-    sleep(15);
-    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
-    }
-
-    
-    if(rank==3){
-    MPI_Barrier(comm);
-    sleep(20);
-    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
-    }
 
 
     // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
@@ -239,12 +218,12 @@ int main (int argc, char *argv[])
 //                      const int *recvcounts, const int *rdispls, MPI_Datatype recvtype, MPI_Comm comm)
 
 
-    // free(Buckets);
-    // free(Spl);
-    // free(Ar);
-    // free(GlrAr);
-    // free(rAr);
-    // free(B);
+//     free(Buckets);
+//     free(Spl);
+//     free(Ar);
+//     free(GlrAr);
+//     free(rAr);
+//     free(B);
 
     MPI_Finalize();
     return 0;
