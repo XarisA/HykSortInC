@@ -20,16 +20,15 @@ int main (int argc, char *argv[])
     int n,m,p,pr,rank,i,j,l,t,x,v,w,y;
     int tag1,tag2,tag3;
     int N=SIZE;
-    //int A[SIZE];
+    int A[SIZE];
   	int GlB[SIZE];
-    int *Ar=(int *)malloc(sizeof(int)*N); 
+    int *Ar=(int *)malloc(sizeof(int)*N);
     int *B=(int *)malloc(sizeof(int)*N);
-    int *Bsorted=(int *)malloc(sizeof(int)*N);
-    int *GlBBuffer = (int *) malloc (sizeof(int) * 2 * N);
-    int *r=(int *)malloc(sizeof(int)*N); 
+    int *r=(int *)malloc(sizeof(int)*N);
     int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
     int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
     int *Buckets = (int *) malloc (sizeof (int) * (N + p));
+
 
     int k=4;
     int *Spl=(int *)malloc(sizeof(int)*(k-1)); //Global histogram of sorted splitters
@@ -56,7 +55,9 @@ int main (int argc, char *argv[])
 
         //Create my Array
         //init_array(A, N,1,100);
-        int A[64]={61,25,63,59,7,11,21,3,36,18,50,66,93,86,22,40,85,94,14,8,21,45,7,42,57,72,28,56,9,87,72,69,63,87,28,69,49,100,23,36,17,73,1,9,58,74,1,42,68,14,50,40,11,8,82,67,79,61,75,40,100,98,60,62};
+        //Uncomment the following for validating excel values
+        //int A[64]={61,25,63,59,7,11,21,3,36,18,50,66,93,86,22,40,85,94,14,8,21,45,7,42,57,72,28,56,9,87,72,69,63,87,28,69,49,100,23,36,17,73,1,9,58,74,1,42,68,14,50,40,11,8,82,67,79,61,75,40,100,98,60,62};
+        int A[64]={85, 94, 50, 31,  3, 42, 44, 84, 60, 84,  3, 66,  1, 59, 19, 43, 34, 49, 34, 13, 62, 27, 11, 53, 55, 43,  7, 96, 88, 96, 26, 24, 41, 75, 54, 43, 69, 97, 27, 28, 81, 81, 45, 33, 91, 64, 75, 24, 64, 60, 37, 26, 39, 99, 30, 45, 41, 37, 41, 80, 84, 66,  4, 76};
         printf("\t\t\t HykSort Implementation \n\n");
         printf("Generating array with random int A: ");
         print_array(A,N);
@@ -173,21 +174,14 @@ int main (int argc, char *argv[])
          Buckets[((n + 1) * v) + w++] = Ar[y];
     }
     Buckets[(n + 1) * v] = w - 1;
+    MPI_Barrier(comm);
 
-    //TODO Remove The following statements
+    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
 
-    //print_array_in_process(Buckets, N+p, p, rank, "Buckets");
-
-    //scaterv send parts of vectors to all other processes
-    //sendcounts Πόσα στοιχεία θα στείλω σε κάθε διεργασία (με την σειρά οι διεργασίες)
-    //sendcounts μία θέση για κάθε διεργασία
-    //displacements από ποα θέση θα ξεκινήσουμε να παίρνουμε τα στοιχεία
-    //MPI_Scatterv(A,sendcounts,displs,MPI_INT,local_A,sendcounts[rank],MPI_INT,0,comm)
+    int *BucketBuffer = (int *) malloc (sizeof (int) * (N + p));
 
 
-    int * BucketBuffer = (int *) malloc (sizeof (int) * (N + p));
-
-    // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
+    // all to all broadcast
     //Για αρχη Alltoallv στην συνεχεια να την αλλαξω με AlltoAllkway
 
     MPI_Alltoall (Buckets, n + 1, MPI_INT, BucketBuffer, 
@@ -196,7 +190,6 @@ int main (int argc, char *argv[])
     
 
     //Remove displacements
-
     j=0;
     int count=0;
     int st;
@@ -209,12 +202,6 @@ int main (int argc, char *argv[])
         j++;
     }
 
-    //sendcount πόσα στοιχεία πρέπει να πάνε σε κάθε διεργασία σε διάνυσμα
-    //displacements από ποια θέση θέλουμε να στέλνουμε δεδομένα
-
-// sendcount[i] = i + 1;
-// displs1[i] = i * LENGTH;
-
     int Bsize =0;
     for(l=0;l<N;l++){
         if(B[l]!=0){
@@ -223,7 +210,7 @@ int main (int argc, char *argv[])
     }
     MPI_Barrier(comm);
     //local_sort(B,Bsize);
-    //print_array_in_process(B, Bsize, p, rank, "Buckets gathered");
+    //print_array_in_process(B, Bsize, p, rank, "Buckets sorted");
     MPI_Barrier(comm);
     int * recvcount = (int *)malloc(N*sizeof(int));
     int * displs = (int *)malloc(N*sizeof(int));
@@ -241,18 +228,6 @@ int main (int argc, char *argv[])
     if (rank == 0){
 		 print_array_in_process(GlB, N, p, rank, "Buckets gathered");
     	}
-
-
-    //print_array_in_process(B, N, p, rank, "True Buckets");
-
-
-
-    free(Buckets);
-    // free(Spl);
-    // free(Ar);
-    // free(GlrAr);
-    // free(rAr);
-    free(B);
 
     MPI_Finalize();
     return 0;
