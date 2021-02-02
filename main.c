@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "functions.h"
 
-#define SIZE 128
+#define SIZE 64
 
 
 int * ParallelSelect(int *Ar,int n, int p, int rank) ;
@@ -20,7 +20,7 @@ int main (int argc, char *argv[])
     int n,m,p,pr,rank,i,j,l,t,x,v,w,y;
     int tag1,tag2,tag3;
     int N=SIZE;
-    int A[SIZE];
+    //int A[SIZE];
     int *Ar=(int *)malloc(sizeof(int)*N); 
     int *B=(int *)malloc(sizeof(int)*N);
     int *r=(int *)malloc(sizeof(int)*N); 
@@ -52,7 +52,8 @@ int main (int argc, char *argv[])
         //int Ar[n];
 
         //Create my Array
-        init_array(A, N,1,100);
+        //init_array(A, N,1,100);
+        int A[64]={61,25,63,59,7,11,21,3,36,18,50,66,93,86,22,40,85,94,14,8,21,45,7,42,57,72,28,56,9,87,72,69,63,87,28,69,49,100,23,36,17,73,1,9,58,74,1,42,68,14,50,40,11,8,82,67,79,61,75,40,100,98,60,62};
         printf("\t\t\t HykSort Implementation \n\n");
         printf("Generating array with random int A: ");
         print_array(A,N);
@@ -172,7 +173,7 @@ int main (int argc, char *argv[])
 
     //TODO Remove The following statements
 
-    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
+    //print_array_in_process(Buckets, N+p, p, rank, "Buckets");
 
     //scaterv send parts of vectors to all other processes
     //sendcounts Πόσα στοιχεία θα στείλω σε κάθε διεργασία (με την σειρά οι διεργασίες)
@@ -187,11 +188,30 @@ int main (int argc, char *argv[])
     MPI_Alltoall (Buckets, n + 1, MPI_INT, BucketBuffer, 
 					 n + 1, MPI_INT, MPI_COMM_WORLD);
     MPI_Barrier(comm);
+    
+    
+    if(rank==0){
+        j=0;
+        int st;
+    while(j<=k){
+        st=j*(n+1);
+        for(i=st;i<=BucketBuffer[st];i++){
+            printf("j=%d ,i=%d ,BucketBuffer[i]=%d\n",j,i,BucketBuffer[i]);
+            B[i-1]=BucketBuffer[i];
+        }
+        j++;
+        continue;
+        }
+    
+    MPI_Barrier(comm);    
+    //MPI_Allgather(&BucketBuffer[0],n,MPI_INT,&B[0],n,MPI_INT,MPI_COMM_WORLD);
+    
+    // print_array_in_process(BucketBuffer, N+p, p, rank, "Buckets Redistributed");
+    // MPI_Barrier(comm);
 
 
-    print_array_in_process(BucketBuffer, N+p, p, rank, "BucketBuffer");
-    MPI_Barrier(comm);
-
+print_array_in_process(B, N+p, p, rank, "True Buckets");
+}
 
     // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
     //Για αρχη Alltoallv στην συνεχεια να την αλλαξω με AlltoAllkway
