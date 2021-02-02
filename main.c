@@ -21,8 +21,11 @@ int main (int argc, char *argv[])
     int tag1,tag2,tag3;
     int N=SIZE;
     //int A[SIZE];
+  	int GlB[SIZE];
     int *Ar=(int *)malloc(sizeof(int)*N); 
     int *B=(int *)malloc(sizeof(int)*N);
+    int *Bsorted=(int *)malloc(sizeof(int)*N);
+    int *GlBBuffer = (int *) malloc (sizeof(int) * 2 * N);
     int *r=(int *)malloc(sizeof(int)*N); 
     int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
     int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
@@ -181,90 +184,75 @@ int main (int argc, char *argv[])
     //displacements από ποα θέση θα ξεκινήσουμε να παίρνουμε τα στοιχεία
     //MPI_Scatterv(A,sendcounts,displs,MPI_INT,local_A,sendcounts[rank],MPI_INT,0,comm)
 
-    //MPI_Gatherv(local_A,sendcounts,MPI_INT,A,recvcounts[rank],displs,MPI_INT,0,comm)
 
     int * BucketBuffer = (int *) malloc (sizeof (int) * (N + p));
+
+    // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
+    //Για αρχη Alltoallv στην συνεχεια να την αλλαξω με AlltoAllkway
 
     MPI_Alltoall (Buckets, n + 1, MPI_INT, BucketBuffer, 
 					 n + 1, MPI_INT, MPI_COMM_WORLD);
     MPI_Barrier(comm);
     
-    
-    if(rank==0){
-        j=0;
-        int st;
+
+    //Remove displacements
+
+    j=0;
+    int count=0;
+    int st;
     while(j<=k){
         st=j*(n+1);
-        for(i=st;i<=BucketBuffer[st];i++){
-            printf("j=%d ,i=%d ,BucketBuffer[i]=%d\n",j,i,BucketBuffer[i]);
-            B[i-1]=BucketBuffer[i];
+        for(i=st+1;i<=(BucketBuffer[st]+st);i++){
+            B[count]=BucketBuffer[i];
+            count++;
         }
         j++;
-        continue;
+    }
+
+    //sendcount πόσα στοιχεία πρέπει να πάνε σε κάθε διεργασία σε διάνυσμα
+    //displacements από ποια θέση θέλουμε να στέλνουμε δεδομένα
+
+// sendcount[i] = i + 1;
+// displs1[i] = i * LENGTH;
+
+    int Bsize =0;
+    for(l=0;l<N;l++){
+        if(B[l]!=0){
+            Bsize++;
         }
-    
-    MPI_Barrier(comm);    
-    //MPI_Allgather(&BucketBuffer[0],n,MPI_INT,&B[0],n,MPI_INT,MPI_COMM_WORLD);
-    
-    // print_array_in_process(BucketBuffer, N+p, p, rank, "Buckets Redistributed");
-    // MPI_Barrier(comm);
+    }
+    MPI_Barrier(comm);
+    //local_sort(B,Bsize);
+    //print_array_in_process(B, Bsize, p, rank, "Buckets gathered");
+    MPI_Barrier(comm);
+    int * recvcount = (int *)malloc(N*sizeof(int));
+    int * displs = (int *)malloc(N*sizeof(int));
 
 
-print_array_in_process(B, N+p, p, rank, "True Buckets");
-}
+    for (i = 0; i < N; i++) {
+        recvcount[i] = i + 1;
+        displs[i] = i * N;
+    }
 
-    // all to all broadcast => Χρειαζομαι τον αναστροφο πινακα
-    //Για αρχη Alltoallv στην συνεχεια να την αλλαξω με AlltoAllkway
-    /*
-    MPI_Request req;
-    m=p/k; //int m=k/p;
-
-  	if(p>1)
-  	{
-        int pr=rank/m;
-  		int color = k*pr/p;
-  		MPI_Request R[k];
-  		#pragma parallel for
-  		for (int i = 0; i < k; ++i)
-  		{
-  			//MPI_Request 
-  			int precv=m*((color-i)%k)+(pr%m);
-  			MPI_Irecv(Buckets, N, MPI_INT,precv, tag1, comm, &R[i])
-  		}
-
-  		for (int i = 0; i < k; ++i)
-  		{
-  			int precv=m*((color-i)%k)+(pr%m);
-  			int psend=m*((color+i)%k)+(pr%m);
-  			MPI_Isend(&B,N,MPI_INT,psend,tag1,comm,&R[i]);
-
-  			j=2;
-  			while(i>0 && i%j==0)
-  			{
-
-  				j=2*j;
-  			}
-            MPI_Wait(&R[i],&status);
-  			//MPI_WaitRecv();
-  		}
-  		MPI_WaitAll();
-
-  		MPI_Comm_split(comm,color,rank,comm);
-  		pr=MPI_Comm_rank(comm,rank);
-  	}
-    printf("My pr is %d",pr);
-    */
-    //    int MPI_Alltoallv(const void *sendbuf, const int *sendcounts,
-//                      const int *sdispls, MPI_Datatype sendtype, void *recvbuf,
-//                      const int *recvcounts, const int *rdispls, MPI_Datatype recvtype, MPI_Comm comm)
+    MPI_Barrier(comm);
+    MPI_Gatherv(B,recvcount[rank],MPI_INT,GlB, recvcount, displs,MPI_INT,0,comm);
+    MPI_Barrier(comm);
+    local_sort(GlB,N);
+    if (rank == 0){
+		 print_array_in_process(GlB, N, p, rank, "Buckets gathered");
+    	}
 
 
-    // free(Buckets);
+    //print_array_in_process(B, N, p, rank, "True Buckets");
+
+
+
+    free(Buckets);
     // free(Spl);
     // free(Ar);
     // free(GlrAr);
     // free(rAr);
-    // free(B);
+    free(B);
 
     MPI_Finalize();
     return 0;

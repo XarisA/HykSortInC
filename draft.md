@@ -167,3 +167,99 @@ int ParallelSelect(int *A,int kway, MPI_Comm comm)
 }
 ```
 
+
+
+
+
+
+## Remove displacements
+
+```C
+    //Remove displacements
+
+    j=0;
+    int count=0;
+    int st;
+    while(j<=k){
+        st=j*(n+1);
+        for(i=st+1;i<=(BucketBuffer[st]+st);i++){
+            B[count]=BucketBuffer[i];
+            count++;
+        }
+        j++;
+    }
+```
+
+## AlltoAll_kway
+
+```C
+    MPI_Request req;
+    m=p/k; //int m=k/p;
+
+  	if(p>1)
+  	{
+        int pr=rank/m;
+  		int color = k*pr/p;
+  		MPI_Request R[k];
+  		#pragma parallel for
+  		for (int i = 0; i < k; ++i)
+  		{
+  			//MPI_Request 
+  			int precv=m*((color-i)%k)+(pr%m);
+  			MPI_Irecv(Buckets, N, MPI_INT,precv, tag1, comm, &R[i])
+  		}
+
+  		for (int i = 0; i < k; ++i)
+  		{
+  			int precv=m*((color-i)%k)+(pr%m);
+  			int psend=m*((color+i)%k)+(pr%m);
+  			MPI_Isend(&B,N,MPI_INT,psend,tag1,comm,&R[i]);
+
+  			j=2;
+  			while(i>0 && i%j==0)
+  			{
+
+  				j=2*j;
+  			}
+            MPI_Wait(&R[i],&status);
+  			//MPI_WaitRecv();
+  		}
+  		MPI_WaitAll();
+
+  		MPI_Comm_split(comm,color,rank,comm);
+  		pr=MPI_Comm_rank(comm,rank);
+  	}
+    printf("My pr is %d",pr);
+```
+
+## Rearrange Output Buffer 
+
+```C
+     /**** Rearranging BucketBuffer ****/
+    int * LocalBucket = (int *) malloc (sizeof (int) * 2 * N / p);
+    int count = 1;
+
+    for (j=0; j<p; j++) {
+    k = 1;
+        for (i=0; i<BucketBuffer[(N/p + 1) * j]; i++) 
+            LocalBucket[count++] = BucketBuffer[(N/p + 1) * j + k++];
+    }
+    LocalBucket[0] = count-1;
+
+    int NumToSort = LocalBucket[0];
+    qsort ((char *) &LocalBucket[1], NumToSort, sizeof(int), intcompare); 
+
+    MPI_Gather (LocalBucket, 2*n, MPI_INT, GlBBuffer,
+                2*n, MPI_INT, 0, MPI_COMM_WORLD);
+
+    //MPI_Gatherv(B,Bsize,MPI_INT,GlB,recvcounts[rank],displs,MPI_INT,0,comm);
+
+    if (rank == 0){
+		count = 0;
+		for(j=0; j<p; j++){
+          k = 1;
+      	 for(i=0; i<GlB[(2 * N/p) * j]; i++) 
+				 Bsorted[count++] = GlBBuffer[(2*N/p) * j + k++];
+    	}
+
+```
