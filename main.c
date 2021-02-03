@@ -27,8 +27,6 @@ int main (int argc, char *argv[])
     int *r=(int *)malloc(sizeof(int)*N);
     int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
     int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
-    int *Buckets = (int *) malloc (sizeof (int) * (N + p));
-
 
     int k=4;
     int *Spl=(int *)malloc(sizeof(int)*(k-1)); //Global histogram of sorted splitters
@@ -51,13 +49,13 @@ int main (int argc, char *argv[])
     if(rank==0)
     {
         n=N/p; //n=16 elements
-        //int Ar[n];
 
         //Create my Array
-        //init_array(A, N,1,100);
+        init_array(A,N,1,100);
         //Uncomment the following for validating excel values
         //int A[64]={61,25,63,59,7,11,21,3,36,18,50,66,93,86,22,40,85,94,14,8,21,45,7,42,57,72,28,56,9,87,72,69,63,87,28,69,49,100,23,36,17,73,1,9,58,74,1,42,68,14,50,40,11,8,82,67,79,61,75,40,100,98,60,62};
-        int A[64]={85, 94, 50, 31,  3, 42, 44, 84, 60, 84,  3, 66,  1, 59, 19, 43, 34, 49, 34, 13, 62, 27, 11, 53, 55, 43,  7, 96, 88, 96, 26, 24, 41, 75, 54, 43, 69, 97, 27, 28, 81, 81, 45, 33, 91, 64, 75, 24, 64, 60, 37, 26, 39, 99, 30, 45, 41, 37, 41, 80, 84, 66,  4, 76};
+        //int A[64]={85, 94, 50, 31,  3, 42, 44, 84, 60, 84,  3, 66,  1, 59, 19, 43, 34, 49, 34, 13, 62, 27, 11, 53, 55, 43,  7, 96, 88, 96, 26, 24, 41, 75, 54, 43, 69, 97, 27, 28, 81, 81, 45, 33, 91, 64, 75, 24, 64, 60, 37, 26, 39, 99, 30, 45, 41, 37, 41, 80, 84, 66,  4, 76};
+        //int A[64]={11,  9, 46, 85, 54, 20, 53, 20, 69, 90, 66, 57, 76, 39, 83, 43, 55, 97, 54, 67, 82, 59, 16, 77,  6, 26, 83, 28, 17, 46, 12, 79, 55, 10, 63,  8, 29, 15, 79, 49, 57, 97, 58, 84, 35, 92, 26, 90, 41, 79,  8, 22, 37, 23, 98, 94, 100, 32, 22, 17, 78, 85, 47, 84};
         printf("\t\t\t HykSort Implementation \n\n");
         printf("Generating array with random int A: ");
         print_array(A,N);
@@ -80,7 +78,6 @@ int main (int argc, char *argv[])
         }
     }else {
         n=N/p;
-        //int Ar[n];
         MPI_Recv(&N, 1, MPI_INT, 0, tag1, MPI_COMM_WORLD, &status);
         //Η κάθε διεργασία θα παραλάβει n στοιχεία και θα τα σώσει στο δικό της διάνυσμα Ar
         MPI_Recv(&Ar[0], n, MPI_INT, 0, tag2, MPI_COMM_WORLD, &status);
@@ -115,7 +112,7 @@ int main (int argc, char *argv[])
                 }
             }
             else if (l==n-1){
-                if (Ar[t]>r[l]){ 
+                if (Ar[t]>=r[l]){
                     rAr[l]++;
                 }
             }
@@ -154,8 +151,7 @@ int main (int argc, char *argv[])
     //Το message του bucket που πρέπει να φτιάξει
     //Κάθε διεργασία πρέπει να χωρίσει τους αριθμούς που έχει (Ar) με βάση τους Splitters Spl
     /**** Creating Buckets locally ****/
-    
-    
+    int *Buckets = (int *) malloc (sizeof (int) * (N + p));
     v = 0;
     w = 1;
 
@@ -175,7 +171,6 @@ int main (int argc, char *argv[])
     }
     Buckets[(n + 1) * v] = w - 1;
     MPI_Barrier(comm);
-
     print_array_in_process(Buckets, N+p, p, rank, "Buckets");
 
     int *BucketBuffer = (int *) malloc (sizeof (int) * (N + p));
@@ -210,24 +205,40 @@ int main (int argc, char *argv[])
     }
     MPI_Barrier(comm);
     //local_sort(B,Bsize);
-    //print_array_in_process(B, Bsize, p, rank, "Buckets sorted");
+    //print_array_in_process(B, n, p, rank, "Buckets sorted");
+
+    int * counts = (int *)malloc(p*sizeof(int));
+    int * displs = (int *)malloc(p*sizeof(int));
+
+    MPI_Gather(&Bsize, 1, MPI_INT, counts, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Barrier(comm);
-    int * recvcount = (int *)malloc(N*sizeof(int));
-    int * displs = (int *)malloc(N*sizeof(int));
+    //printf("Bsize %d ",Bsize);
+    //print_array_in_process(counts,p,p,rank,"recvcount ");
+    if(rank==0){
+        for ( i = 0; i < p; i++){
+            if (i>0){
+                displs[i]= displs[i-1] + counts[i-1];
+            }
+            else {displs[i]=0;}
+        }
+        print_array_in_process(displs,p,p,rank,"Displacements ");
+        print_array_in_process(counts,p,p,rank,"Recievecounts ");
+    }
+    MPI_Barrier(comm);
 
+    MPI_Gatherv(B,Bsize,MPI_INT,GlB, counts,displs,MPI_INT,0,comm);
+    MPI_Barrier(comm);
 
-    for (i = 0; i < N; i++) {
-        recvcount[i] = i + 1;
-        displs[i] = i * N;
+    if (rank == 0){
+        sleep(2);
+        local_sort(GlB,N);
+        print_array_in_process(GlB, N, p, rank, "Buckets gathered");
     }
 
-    MPI_Barrier(comm);
-    MPI_Gatherv(B,recvcount[rank],MPI_INT,GlB, recvcount, displs,MPI_INT,0,comm);
-    MPI_Barrier(comm);
-    local_sort(GlB,N);
-    if (rank == 0){
-		 print_array_in_process(GlB, N, p, rank, "Buckets gathered");
-    	}
+//    free(B);
+//    free(counts);
+//    free(displs);
+//    free(Buckets);
 
     MPI_Finalize();
     return 0;
