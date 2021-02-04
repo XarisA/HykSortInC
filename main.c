@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "functions.h"
 
-#define SIZE 64
+#define SIZE 4096
 
 
 int * ParallelSelect(int *Ar,int n, int p, int rank) ;
@@ -19,7 +19,7 @@ int main (int argc, char *argv[])
 {
     int n,m,p,pr,rank,i,j,l,t,x,v,w,y;
     int tag1,tag2,tag3;
-    int N=SIZE;
+    long N=SIZE;
     int A[SIZE];
   	int GlB[SIZE];
     int *Ar=(int *)malloc(sizeof(int)*N);
@@ -28,8 +28,8 @@ int main (int argc, char *argv[])
     int *rAr=(int *)malloc(sizeof(int)*N); //Local histogram of sorted splitters
     int *GlrAr=(int *)malloc(sizeof(int)*N); //Global histogram of sorted splitters
 
-    int k=4;
-    int *Spl=(int *)malloc(sizeof(int)*(k-1)); //Global histogram of sorted splitters
+    
+    
     int cnt=0;
     tag1=100;
     tag2=200;
@@ -44,6 +44,9 @@ int main (int argc, char *argv[])
     MPI_Comm_size(comm,&p);
     MPI_Comm_rank(comm,&rank);
 
+    int k=p;
+    int *Spl=(int *)malloc(sizeof(int)*(k-1)); //Global histogram of sorted splitters
+
     MPI_Barrier(comm);
     // Table Creation
     if(rank==0)
@@ -51,7 +54,7 @@ int main (int argc, char *argv[])
         n=N/p; //n=16 elements
 
         //Create my Array
-        init_array(A,N,1,100);
+        init_array(A,N,1,100000);
         //Comment this ^ and uncomment the following for validating excel values
         //int A[64]={61,25,63,59,7,11,21,3,36,18,50,66,93,86,22,40,85,94,14,8,21,45,7,42,57,72,28,56,9,87,72,69,63,87,28,69,49,100,23,36,17,73,1,9,58,74,1,42,68,14,50,40,11,8,82,67,79,61,75,40,100,98,60,62};
         printf("\t\t\t HykSort Implementation \n\n");
@@ -233,11 +236,12 @@ int main (int argc, char *argv[])
         print_array_in_process(GlB, N, p, rank, "Buckets gathered");
     }
 
-//    free(B);
-//    free(counts);
-//    free(displs);
-//    free(Buckets);
+    free(B);
+    free(counts);
+    free(displs);
+    free(Buckets);
 
+    MPI_Barrier(comm);
     MPI_Finalize();
     return 0;
 }
@@ -276,11 +280,6 @@ int Hyksort(int *Ar, int k, MPI_Comm comm)
 {
 
 }
-
-    // Χωριζουμε τον πινακα του καθε επεξεργαστη με splitters.
-    // αν θελω στους 3εις επεξεργαστες, βαζω δυο splitters
-    //Πρεπει να επιλεξω τυχαια 4 αριθμους , οσους και τα process που εχω! αρα 2 Splitters
-    //Εστω SampleSplitters και την αλλαζω στην συνεχεια με ParallelSelect
 
 
 /** Bitonic Sort **/
