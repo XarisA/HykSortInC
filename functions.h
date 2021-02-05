@@ -9,6 +9,15 @@
 
 #include <stdio.h>
 
+static int intcompare(const void *i, const void *j)
+{
+  if ((*(int *)i) > (*(int *)j))
+    return (1);
+  if ((*(int *)i) < (*(int *)j))
+    return (-1);
+  return (0);
+}
+
 int comparator (const void * p1, const void * p2)
 {
     return (*(int*)p1 - *(int*)p2);
@@ -39,6 +48,21 @@ void print_array(int *A,int n)
         printf("%2d, ",A[i]);
     printf("%2d]",A[n-1]);
     printf ( "\n\n ");
+}
+int powerOf2(int n)
+{
+    // base cases
+    // '1' is the only odd number 
+    // which is a power of 2(2^0) 
+    if (n == 1) 
+      return 1; 
+     
+    // all other odd numbers are not powers of 2
+    else if (n % 2 != 0 || n ==0) 
+      return 0; 
+     
+    // recursive function call
+    return powerOf2(n / 2); 
 }
 #define VariableName(name) #name
 void print_array_in_process(int *Ar, int n, int p, int rank , char msg[])
