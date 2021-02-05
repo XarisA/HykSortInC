@@ -76,7 +76,7 @@ void print_array_in_process(int *Ar, int n, int p, int rank , char msg[])
     printf("%2d]",Ar[n-1]);
     printf ( "\n\n");
 }
-int bs_lower_bound(int a[], int n, int x) {
+int lower_bound(int *a, int n, int x) {
     int l = 0;
     int h = n; // Not n - 1
     while (l < h) {
