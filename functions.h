@@ -90,3 +90,35 @@ int lower_bound(int *a, int n, int x) {
     return l;
 }
 
+int merge(int *arr1, int *arr2, int *arr3, int m, int n)
+{
+    int i,j,k;
+    i = j = k = 0;
+    for(i=0;i < m && j < n;)
+    {
+        if(arr1[i] < arr2[j])
+        {
+            arr3[k] = arr1[i];
+            k++;
+            i++;
+        }
+        else
+        {
+            arr3[k] = arr2[j];
+            k++;
+            j++;
+        }
+    }
+    while(i < m)
+    {
+        arr3[k] = arr1[i];
+        k++;
+        i++;
+    }
+    while(j < n)
+    {
+        arr3[k] = arr2[j];
+        k++;
+        j++;
+    }
+}
