@@ -87,7 +87,7 @@ int main (int argc, char *argv[])
         printf( "Elapsed time is %f\n", end - start );
     }
 
-    // Uncomment the following to use BitonicSort
+    // Uncomment the following to use BitonicSort . Also comment out Hyksort
 //    if(p>1){
 //        start = MPI_Wtime();
 //        bitonic_sort(Ar,n,p,rank, MPI_COMM_WORLD);
@@ -112,7 +112,7 @@ int Hyksort(int *Ar,int *Spl,int *GlB,int n, int k,int p,int rank, MPI_Comm comm
     int *B=(int *)malloc(sizeof(int)*N);
 
     // Local Sort & Sample Distribution
-    // Ο καθε επεξεργαστης ταξινομει το δικο του κομματι.
+    // Each processor sorts localy
     local_sort(Ar,n);
     MPI_Barrier(comm);
     // Uncomment to write to stdout
@@ -128,13 +128,8 @@ int Hyksort(int *Ar,int *Spl,int *GlB,int n, int k,int p,int rank, MPI_Comm comm
 //        }
 
 
-//        MPI_Barrier(comm);
-    //Πρεπει να φτιαξω buckets μοιραζοντας τα στοιχεια με βαση τους διαχωριστες
-    //Βημα 4. M είναι το μήνυμα που πρέπει να στείλει η διεργασία με το rank pr σε κάθε άλλη διεργασία i
-    //Το message του bucket που πρέπει να φτιάξει
-    //Κάθε διεργασία πρέπει να χωρίσει τους αριθμούς που έχει (Ar) με βάση τους Splitters Spl
-    //**** Creating Buckets locally /
-
+    //**** Creating Buckets locally 
+    //Rank(Ar,Spl)
 
     int *Buckets = (int *) malloc (sizeof (int) * (N + p));
     v = 0;
@@ -159,26 +154,28 @@ int Hyksort(int *Ar,int *Spl,int *GlB,int n, int k,int p,int rank, MPI_Comm comm
     // Uncomment to write to stdout
 //    print_array_in_process(Buckets, N+p, p, rank, "Buckets");
 
+// End of Rank Function
+
     int *BucketBuffer = (int *) malloc (sizeof (int) * (N + p));
-
-
 
     // All to All broadcast
     // Starting with MPI_Alltoall.
-    // After testing change it with AlltoAllkway
     MPI_Alltoall (Buckets, n + 1, MPI_INT, BucketBuffer,
-                  n + 1, MPI_INT, MPI_COMM_WORLD);
-    MPI_Barrier(comm);
-
+                 n + 1, MPI_INT, MPI_COMM_WORLD);
+   
+    //Choose between ^^ MPI_Alltoall and  SendRecieve_kway
     /*
      * My implementation of AllToAll_Kway (Algorithm 3.5) found in
      * paper "Hyksort: A new Variant of Hypercube Quicksort on Distributed Memory Architectures
      */
-//    while (p>1){
-//        SendRecieve_kway(Buckets,BucketBuffer, n,p,rank,4,comm);
-//    }
+    // while (p>1){
+    //     SendRecieve_kway(Buckets,BucketBuffer, n,p,rank,4,comm);
+    // }
+
+    MPI_Barrier(comm);
 
     //Remove displacements
+    //
     j=0;
     int count=0;
     int st;
@@ -224,6 +221,7 @@ int Hyksort(int *Ar,int *Spl,int *GlB,int n, int k,int p,int rank, MPI_Comm comm
     }
     MPI_Barrier(comm);
 
+    // Gather all elements in rank 0.
     MPI_Gatherv(B,Bsize,MPI_INT,GlB, counts,displs,MPI_INT,0,comm);
     MPI_Barrier(comm);
 
@@ -597,7 +595,7 @@ int SendRecieve_kway(int *Buckets,int *BucketBuffer,int n,int p,int rank,int k,M
         int color = k*pr/p;
         MPI_Request R[k];
 
-        #pragma parallel for
+    #pragma omp parallel for
         for (i = 0; i < k; ++i)
         {   //MPI_Request
             precv=m*((color-i)%k)+(pr%m);
@@ -624,8 +622,8 @@ int SendRecieve_kway(int *Buckets,int *BucketBuffer,int n,int p,int rank,int k,M
         merge(&R[0],&R[k/2],BucketBuffer,0,k/2);
 
         MPI_Comm scomm;
-        MPI_Comm_split(comm,color,rank,scomm);
-        pr=MPI_Comm_rank(comm,rank);
+        MPI_Comm_split(comm,color,rank,&scomm);
+        pr=MPI_Comm_rank(comm,&rank);
         printf("My pr is %d",pr);
     }
 }
