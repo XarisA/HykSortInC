@@ -12,7 +12,7 @@ HykSort in C implementation. A  SampleSort variant that uses alltoallv_kway and 
 
 GNU GENERAL PUBLIC LICENSE (Version 3, 29 June 2007)
 
-Copyright (c) 2021 Harris Arvanitis (xaris@tuta.io)
+Copyright (c) 2021 Harris Arvanitis
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
